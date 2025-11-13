@@ -1,67 +1,104 @@
-// testhttp.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+//The client application is NOT a program to run on an IoT device; rather it emulates an IoT device
 
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include "httplib.h"
+#include <random>
+#include <string>
+
+//Items necessary for random number generation
+std::random_device rd;
+std::mt19937 gen(rd()); // Seed the engine with a truly random value
+std::uniform_int_distribution<> first_digit(1, 223);
+std::uniform_int_distribution<> other_digits(1, 255);
+
+//int giveRandom(std::uniform_int_distribution<> distrib);
+//std::string giveIP();
+
+class Sensor {
+private:
+	int giveRandom(std::uniform_int_distribution<> distrib) {
+		return distrib(gen);
+
+	}
+
+	std::string giveIP() {
+		return std::to_string(giveRandom(first_digit)) + "." + std::to_string(giveRandom(other_digits)) + "." + std::to_string(giveRandom(other_digits)) + "." + std::to_string(giveRandom(other_digits));
+	}
+public:
+	float lat;
+	float lon;
+	std::string countryCode;
+	std::string region;
+
+	Sensor() {
+		//Constructor Function to assign key member attributes of the class on creation
+		httplib::Client cli("http://ip-api.com");
+
+		while(true) {
+			std::string currentIP = giveIP();
+			auto res = cli.Get("/json/" + currentIP);
+			if (res && res->status == 200) {
+
+				auto res_body = nlohmann::json::parse(res->body);
+				if (res_body["status"] == "success") {
+					this->lat = res_body["lat"];
+					this->lon = res_body["lon"];
+					this->countryCode = res_body["countryCode"];
+					this->region = res_body["region"];
+					
+					break;
+				}
+				//If the above branch does not execute, then the above request had a status of "failure".
+			}
+			else {
+				std::cout << "Error: " << (res ? std::to_string(res->status) : "Request failed") << std::endl;
+				break;
+			}
+		}
+
+
+	}
+};
 
 int main() {
-	httplib::Client cli("localhost", 3000);
-	auto res = cli.Get("/");
-	if (res && res->status == 200) {
-		std::cout << res->body << std::endl;
-	}
-	else {
-		std::cout << "Error: " << (res ? std::to_string(res->status) : "Request failed") << std::endl;
-	}
 
-	/*
-	httplib::Client cli("http://httpbin.org");
-	if (auto res = cli.Get("/get")) {
-		if (res->status == 200) {
-			auto json = nlohmann::json::parse(res->body);
-			std::cout << "Origin: " << json["origin"] << std::endl;
-			std::cout << "URL: " << json["url"] << std::endl;
-		}
-		else {
-			std::cout << "Status: " << res->status << std::endl;
-		}
-	}
-	else {
-		auto err = res.error();
-		std::cout << "Error code: " << err << std::endl;
-	}
+	Sensor testing;
+	std::cout << std::to_string(testing.lat);
+//	std::string currentIP = giveIP();
+//
+//	httplib::Client cli("http://ip-api.com");
+//	auto res = cli.Get("/json/" + currentIP);
+//	//std::cout << res;
+//	if (res && res->status == 200) {
+//		//std::cout << res->body << std::endl;
+//		auto meat = nlohmann::json::parse(res->body);
+//		std::cout << meat["countryCode"] << ",   " << meat["lat"] << std::endl;
+//}
+//	else {
+//		std::cout << "Error: " << (res ? std::to_string(res->status) : "Request failed") << std::endl;
+//	}
 
-	nlohmann::json j = {
-		{"name", "John Doe"},
-		{"age", 30},
-		{"is_student", false},
-		{"skills", {"C++", "Python", "JavaScript"}}
-	};
+	//nlohmann::json test_color = {
+	//	{"id", 6},
+	//	{"color", "black"}
+	//};
 
-	if (auto res = cli.Post("/post", j.dump(), "application/json")) {
-		if (res->status == 200) {
-			auto response_json = nlohmann::json::parse(res->body);
-			std::cout << "Response JSON: " << response_json.dump(4) << std::endl;
-		}
-		else {
-			std::cout << "Status: " << res->status << std::endl;
-		}
-	}
-	else {
-		auto err = res.error();
-		std::cout << "Error code: " << err << std::endl;
-	}
-	*/
+	//res = cli.Post("/colors", test_color.dump(), "application/json");
+
+	//if (res && res->status == 201) {
+	//	std::cout << "Color added successfully: " << res->body << std::endl;
+	//}
+	//else {
+	//	std::cout << "Error adding color: " << (res ? std::to_string(res->status) : "Request failed") << std::endl;
+	//}
 }
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
+//int giveRandom(std::uniform_int_distribution<> distrib) {
+//	return distrib(gen);
+//
+//}
+//
+//std::string giveIP() {
+//	return std::to_string(giveRandom(first_digit)) + "." + std::to_string(giveRandom(other_digits)) + "." + std::to_string(giveRandom(other_digits)) + "." + std::to_string(giveRandom(other_digits));
+//}
